@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+.p3d
+.p3dat/
+*.p3dlog
+data.convd.rr1
+3DCalc*/
