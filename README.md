@@ -21,9 +21,34 @@
 
 ## 安装
 
+### 方式一：plugin（推荐，可自动更新）
+
+在 Claude Code 中执行：
+
+```
+/plugin install plaxis-automation --marketplace xyj0727/plaxis-automation-skill
+```
+
+或命令行：
+
+```bash
+claude plugin marketplace add xyj0727/plaxis-automation-skill
+claude plugin install plaxis-automation@plaxis-automation-skill
+```
+
+开启自动更新：在 `~/.claude/settings.json` 的 `extraKnownMarketplaces.plaxis-automation-skill` 里加 `"autoUpdate": true`（或在 `/plugin` → Marketplaces 里打开）。
+
+### 方式二：git clone（不会自动更新，需手动 `git pull`）
+
 ```bash
 git clone https://github.com/xyj0727/plaxis-automation-skill ~/.claude/skills/plaxis-automation
-pip install plxscripting
+```
+
+### Python 依赖
+
+```bash
+uv pip install plxscripting
+# 或：pip install plxscripting
 ```
 
 ## 文件
