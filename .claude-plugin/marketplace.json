@@ -9,7 +9,7 @@
       "name": "plaxis-automation",
       "source": "./",
       "description": "通过 PLAXIS 3D Remote Scripting API（plxscripting）自动化创建、修改、修复和验证 PLAXIS 3D 有限元模型。原作者 Noahpeerless。",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": { "name": "Noahpeerless (original), xyj0727 (modifications)" },
       "homepage": "https://github.com/xyj0727/plaxis-automation-skill",
       "license": "MIT",

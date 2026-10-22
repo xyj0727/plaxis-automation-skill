@@ -1,15 +1,564 @@
 ---
 name: plaxis-automation
 description: >
-  通过 PLAXIS 3D Remote Scripting API（plxscripting）自动化创建、修改、修复和验证
-  PLAXIS 3D 有限元模型。用于处理 .p3d/.p3dat 项目、材料、土层、几何体、钻孔、
-  渗流边界、降雨、排水线/点/面、阶段、网格、计算、结果文件清理，以及保存失败、
-  data.plxml/data.convd.rr1、中文路径或命令历史损坏等 PLAXIS 自动化问题。
+  通过 PLAXIS Remote Scripting API (plxscripting) 自动化构建、求解与分析 PLAXIS 3D 有限元模型。
+  支持端到端全流程闭环：模板克隆与会话管理、土层与钻孔地质建模、结构与防排水构件（板/接触面/盲沟）、
+  网格剖分与局部细化、分期施工步与降雨瞬态渗流工况编排、求解器监听、以及 Output 自动提取安全系数(Msf)、
+  孔压吸力场、位移与云图。
+  触发词: PLAXIS, .p3d, 有限元, 地层, 钻孔, soilmat, borehole, soillayer, 渗流, 边坡, 基坑,
+  隧道, 加宽, 防排水, plate, interface, staged construction, 降雨入渗, 瞬态渗流, 安全系数, Msf。
+  也用于桩（单桩、翼桩、筒型基础）水平推覆与参数化批量建模，以及保存失败、
+  data.plxml/data.convd.rr1、中文路径、命令历史损坏、端口残留等 PLAXIS 自动化问题。
 ---
 
-# PLAXIS 3D 自动化建模
+# PLAXIS 3D 端到端自动化建模与求解系统
 
-> 原作者：[Noahpeerless](https://github.com/Noahpeerless)（<https://github.com/Noahpeerless/plaxis-automation-skill>，MIT）。本文件为 xyj0727 的改进版。
+> 原作者：[Noahpeerless](https://github.com/Noahpeerless)（<https://github.com/Noahpeerless/plaxis-automation-skill>，MIT）。本文件为 xyj0727 的改进版：正文为原作者 2026-10-09 的新版，附录 A 保留原作者旧版的实操小节，附录 B 为实测补充的坑与经验。
+
+通过 Python `plxscripting` 连接 PLAXIS 3D (PLAXIS 3D 2024) 的 Remote Scripting 服务器，
+实现**“几何参数/工况输入 → 地层与结构建模 → 施工工况编排 → 求解计算 → 结果指标提取与出图”**的全流程自动化闭环。
+
+---
+
+## 目录
+1. [端到端全流程管道](#端到端全流程管道)
+2. [环境前置与生命周期管理](#环境前置与生命周期管理)
+3. [模块 1：土体与钻孔地质建模 (Soil Mode)](#模块-1土体与钻孔地质建模-soil-mode)
+4. [模块 2：结构与防排水构件建模 (Structures Mode)](#模块-2结构与防排水构件建模-structures-mode)
+5. [模块 3：网格剖分与局部细化 (Mesh Mode)](#模块-3网格剖分与局部细化-mesh-mode)
+6. [模块 4：施工步与工况流转编排 (Staged Construction Mode)](#模块-4施工步与工况流转编排-staged-construction-mode)
+7. [模块 5：求解器驱动与收敛监控 (Calculate Engine)](#模块-5求解器驱动与收敛监控-calculate-engine)
+8. [模块 6：后处理数据提取与云图导出 (Output API)](#模块-6后处理数据提取与云图导出-output-api)
+9. [端到端全流程可执行脚手架范式](#端到端全流程可执行脚手架范式)
+10. [核心避坑与已知限制总结](#核心避坑与已知限制总结)
+
+---
+
+## 端到端全流程管道
+
+```
+[基准模板工程 (.p3d + .p3dat)]
+       │ (shutil.copytree 物理克隆，彻底解决二进制丢失痛点)
+       ▼
+[拉起 Plaxis3DInput 远程服务 (自动分配端口)]
+       │
+       ├─► 1. Soil Mode: 轮廓定义、土工参数建库、钻孔布置、非水平地层标高设置
+       │
+       ├─► 2. Structures Mode: 防冲刷面板/板构件、土工膜/滑移接触面、盲沟排水线面、几何求交
+       │
+       ├─► 3. Mesh Mode: 敏感区局部细化因子配置、网格生成与单元检查
+       │
+       ├─► 4. Staged Construction Mode: 
+       │      ├─ 初始地应力相 (K0 / Gravity Loading)
+       │      ├─ 分期开挖/拼宽填筑相 (激活/钝化土体与构件)
+       │      ├─ 降雨瞬态渗流相 (Discharge 强度、TimeInterval 历时、水边界)
+       │      └─ 边坡稳定性相 (Safety 强度折减、计算控制)
+       │
+       └─► 5. Calculate: 状态检查、启动求解、日志收敛监听与容错
+              │
+              ▼
+[拉起 Plaxis3DOutput 远程服务]
+       │
+       ├─► 提取边坡稳定安全系数: Msf
+       ├─► 提取渗流指标: 孔隙水压力(PWater)、基质吸力(Suction)、饱和度(DegreeOfSaturation)
+       ├─► 提取变形指标: 位移极值(Ux, Uy, Uz, |u|)及坐标
+       ├─► 提取结构内力: 板单元弯矩(M)、剪力(Q)、轴力(N)
+       └─► 自动导出结果云图截图与结构化 JSON/CSV 报表
+```
+
+---
+
+## 环境前置与生命周期管理
+
+### 1. 依赖与路径
+- Python 依赖：`pip install plxscripting`
+- PLAXIS 3D 2024 默认安装路径：
+  - Input: `D:\Seequent\PLAXIS 3D 2024\Plaxis3DInput.exe`
+  - Output: `D:\Seequent\PLAXIS 3D 2024\Plaxis3DOutput.exe`
+
+### 2. 核心架构模式：模板克隆模式（Template Cloning Pattern）
+⚠️ **致命陷阱防范**：通过 `s_i.new()` 创建的空白工程不包含底层二进制模型文件，且脚本 `save()` 无法可靠写入二进制几何。
+**标准做法**：
+1. 维护一个基础干净的工程模板目录（包含 `.p3d` 文件及同名 `.p3dat` 文件夹）。
+2. 在 Python 中先使用 `shutil.copytree` 完整拷贝为工作目录工程。
+3. 通过 `s_i.open(cloned_p3d_path)` 打开并操作，计算保存后完全自洽。
+
+### 3. 会话启动与清理封装
+```python
+import subprocess, time, socket, shutil
+from pathlib import Path
+from plxscripting.easy import new_server
+
+def get_free_port(start=10000):
+    for port in range(start, start + 100):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(('localhost', port)) != 0:
+                return port
+    raise RuntimeError("未找到可用端口")
+
+class PlaxisSession:
+    def __init__(self, exe_path, port=None, password="plx_auto_password"):
+        self.exe_path = exe_path
+        self.port = port or get_free_port()
+        self.password = password
+        self.proc = None
+        self.s = None
+        self.g = None
+
+    def start(self, timeout=60):
+        self.proc = subprocess.Popen([
+            self.exe_path,
+            f"--AppServerPort={self.port}",
+            f"--AppServerPassword={self.password}"
+        ])
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            time.sleep(2)
+            try:
+                self.s, self.g = new_server("localhost", self.port, password=self.password, request_timeout=timeout)
+                return self.s, self.g
+            except Exception:
+                pass
+        self.close()
+        raise TimeoutError(f"无法在 {timeout}s 内连接 PLAXIS 服务 (端口 {self.port})")
+
+    def close(self):
+        if self.proc:
+            try:
+                self.proc.terminate()
+                self.proc.wait(timeout=5)
+            except Exception:
+                self.proc.kill()
+            self.proc = None
+```
+
+---
+
+## 模块 1：土体与钻孔地质建模 (Soil Mode)
+
+### 1. 初始化与激活
+```python
+s_i.open(project_p3d_path)
+g_i.gotosoil()  # 必须最先调用！否则 Soillayers/Boreholes 等几何对象不可见
+```
+
+### 2. 土壤边界轮廓
+```python
+# 初始化矩形几何范围 (x_min, y_min, x_max, y_max)
+g_i.SoilContour.initializerectangular(0, 0, length_x, length_y)
+```
+
+### 3. 土体材料批量定义
+**关键属性映射 (PLAXIS 3D 2024 外部 API):**
+
+| 参数项 | API 属性名 | 单位 | 示例值 |
+|---|---|---|---|
+| 本构模型 | `SoilModel` | - | `"Mohr-Coulomb"`, `"Linear elastic"`, `"Hardening soil"` |
+| 天然重度 | `gammaUnsat` | kN/m³ | `18.5` |
+| 饱和重度 | `gammaSat` | kN/m³ | `20.0` |
+| 弹性模量 | `Eref` | kPa | `20000.0` |
+| 泊松比 | `nu` | - | `0.3` |
+| 各向异性渗透系数 | `PermHorizontalPrimary`, `PermHorizontalSecondary`, `PermVertical` | m/day | `0.01` |
+| 粘聚力与内摩擦角 | `cRef`, `phi` | kPa, ° | `15.0`, `25.0` |
+| 剪胀角 | `psi` | ° | `0.0` |
+
+```python
+def create_soil_material(g_i, name, soil_model, gamma_unsat, gamma_sat, Eref, nu, perm, c=0, phi=0, psi=0):
+    mat = g_i.soilmat()
+    props = [
+        "Name", name,
+        "SoilModel", soil_model,
+        "gammaUnsat", gamma_unsat,
+        "gammaSat", gamma_sat,
+        "Eref", Eref,
+        "nu", nu,
+        "PermHorizontalPrimary", perm,
+        "PermHorizontalSecondary", perm,
+        "PermVertical", perm,
+    ]
+    if soil_model in ["Mohr-Coulomb", "Hardening soil"]:
+        props += ["cRef", c, "phi", phi, "psi", psi]
+    mat.setproperties(*props)
+    return mat
+```
+> ⚠️ `DrainageType`（排水类型）外部脚本无法修改，若需修改需在初始模板中预设。
+
+### 4. 钻孔与非水平地层构建
+```python
+# 1. 沿断面布设钻孔
+bh_positions = [(0.0, y_mid), (5.0, y_mid), (12.0, y_mid), (25.0, y_mid)]
+for x, y in bh_positions:
+    g_i.borehole(x, y)
+
+# 2. 从下至上创建标准层厚
+layers_cfg = [
+    (10.0, mat_bedrock),
+    (5.0,  mat_soft_clay),
+    (3.0,  mat_old_subgrade),
+    (0.5,  mat_cushion)
+]
+for thk, mat in layers_cfg:
+    g_i.soillayer(thk)
+    g_i.Soillayers[-1].Soil.Material = mat
+
+# 3. 针对拼宽台阶、放坡、老路界面的非水平调整 (setsoillayerlevel 命令)
+# 语法: setsoillayerlevel <Borehole_N> <Soillayer_N> Top|Bottom <z_value>
+# 注: Borehole 从 1 开始计数，Soillayer 从 0 开始计数
+g_i.commands('setsoillayerlevel Borehole_1 Soillayer_2 Top 2.5')
+g_i.commands('setsoillayerlevel Borehole_1 Soillayer_2 Bottom 0.0')
+# 台阶削坡/厚度归零设置:
+g_i.commands('setsoillayerlevel Borehole_3 Soillayer_2 Top 0.0')
+g_i.commands('setsoillayerlevel Borehole_3 Soillayer_2 Bottom 0.0')  # 厚度为 0 视为开挖消除
+```
+
+---
+
+## 模块 2：结构与防排水构件建模 (Structures Mode)
+
+完成土层后切换到结构模式：
+```python
+g_i.gotostructures()
+```
+
+### 1. 几何基本元素构建
+```python
+# 创建空间线段
+line_1 = g_i.line((x1, y1, z1), (x2, y2, z2))
+
+# 创建空间多边形平面 (4点)
+surf_1 = g_i.surface((x1, y1, z1), (x2, y2, z2), (x3, y3, z3), (x4, y4, z4))
+
+# 几何拉伸 (将面沿 Y 方向拉伸形成体)
+g_i.extrude(surf_1, 0, dy, 0)
+```
+
+### 2. 板单元（Plate - 护壁/混凝土面板/路面结构）
+```python
+# 1. 定义板材料
+plate_mat = g_i.platemat()
+plate_mat.setproperties(
+    "Name", "C30_Retaining_Wall",
+    "MaterialName", "C30_Retaining_Wall",
+    "Isotropic", True,
+    "E1", 3.0e7,     # 弹性模量 kPa
+    "nu12", 0.2,     # 泊松比
+    "d", 0.25,       # 板厚 m
+    "gamma", 25.0    # 容重 kN/m³
+)
+
+# 2. 为目标表面赋予板构件
+g_i.plate(surf_1)
+surf_1.Plate.Material = plate_mat
+```
+
+### 3. 接触面与防渗隔离膜（Interface）
+防渗土工膜、结构与土体接触弱面需布置正/负接触面：
+```python
+# 为表面添加正向/负向接触面
+g_i.posinterface(surf_1)
+g_i.neginterface(surf_1)
+
+# 若为防渗土工膜，设置水力不透水接触面
+# g_i.commands(f'set {surf_1.Name}.PositiveInterface.GroundwaterFlow.Condition "Impermeable"')
+```
+
+### 4. 排水体构件（Line Drain / Surface Drain）
+防排水系统的盲沟、渗水管与透水垫层：
+```python
+# 1. 线排水体 (盲沟/纵向集水管)
+g_i.linedrain(line_1)
+
+# 2. 面排水体 (横向透水垫层/排水分离面)
+g_i.surfdrain(surf_1)
+```
+
+### 5. 几何求交与拓扑重建 (关键步骤)
+```python
+# 必须调用几何相交计算，确保板/面/排水体与土体单元形成共节点拓扑
+g_i.intersect()
+```
+
+---
+
+## 模块 3：网格剖分与局部细化 (Mesh Mode)
+
+### 1. 局部细化与敏感区设置
+为避免盲沟、防渗薄层产生网格畸变或渗流数值震荡，在关键构件上施加局部细化：
+```python
+g_i.gotomesh()
+
+# 对高水力梯度区、排水线局部细化 (0.25 ~ 0.5)
+g_i.commands(f'set {line_1.Name}.CoarsenessFactor 0.25')
+g_i.commands(f'set {surf_1.Name}.CoarsenessFactor 0.5')
+```
+
+### 2. 全局网格划分与验证
+```python
+# 网格粗细度系数 (例如: Medium=0.06, Fine=0.04)
+coarseness = 0.05
+g_i.mesh(coarseness)
+
+# 检查网格是否生成
+time.sleep(3)
+print(f"网格单元已生成")
+```
+
+---
+
+## 模块 4：施工步与工况流转编排 (Staged Construction Mode)
+
+切换至施工步模式：
+```python
+g_i.gotostages()
+```
+
+### 1. 初始地应力阶段 (InitialPhase)
+```python
+init_p = g_i.InitialPhase
+# 边坡或非水平地层建议采用重力加载 (Gravity loading)，水平地层可用 K0
+init_p.CalculationType = "Gravity loading"   # 或 "K0 procedure"
+```
+
+### 2. 施工开挖与填筑阶段 (Plastic Phase)
+```python
+# 阶段 1：老路削坡开挖
+p_exc = g_i.phase(init_p)
+p_exc.Identification = "Phase_1_Excavation"
+p_exc.CalculationType = "Plastic"
+p_exc.LoadingInput = "Staged construction"
+
+# 钝化开挖土体 (开挖)
+for vol in excavation_volumes:
+    g_i.deactivate(vol, p_exc)
+
+# 阶段 2：轻质土拼宽填筑与盲沟激活
+p_fill = g_i.phase(p_exc)
+p_fill.Identification = "Phase_2_Widening_Fill"
+p_fill.CalculationType = "Plastic"
+
+# 激活新填土体与防排水板、排水盲沟
+for vol in fill_volumes:
+    g_i.activate(vol, p_fill)
+g_i.activate(surf_1.Plate, p_fill)
+g_i.activate(line_1.LineDrain, p_fill)
+```
+
+### 3. 降雨入渗瞬态渗流工况 (Transient Flow Phase)
+```python
+p_rain = g_i.phase(p_fill)
+p_rain.Identification = "Phase_3_Rainfall_Transient"
+p_rain.CalculationType = "Flow only"        # 纯渗流；若分析边坡变形耦合可设为 "Fully coupled"
+p_rain.TimeInterval = 3.0                   # 降雨历时 3 天 (day)
+p_rain.MaxSteps = 150                       # 最大时间步数
+
+# 施加降雨强度 (Precipitation)
+g_i.Precipitation.TimeDependency = "Constant"
+g_i.Precipitation.Discharge = 0.05          # 降雨强度 50 mm/day -> 0.05 m/day
+g_i.commands(f'activate Precipitation {p_rain.Name}')
+```
+
+### 4. 稳定性安全系数工况 (Safety Phase - 强度折减法)
+```python
+# 评估降雨完成后的边坡稳定安全系数
+p_safe = g_i.phase(p_rain)
+p_safe.Identification = "Phase_4_Slope_Safety"
+p_safe.CalculationType = "Safety"
+p_safe.LoadingInput = "Incremental multipliers"
+p_safe.MaxSteps = 100
+p_safe.ToleratedError = 0.01
+```
+
+### 5. 保存工程
+```python
+g_i.save()
+```
+
+---
+
+## 模块 5：求解器驱动与收敛监控 (Calculate Engine)
+
+### 1. 触发计算
+```python
+# 计算所有标记阶段
+print("开始执行有限元计算求解...")
+s_i.calculate()
+```
+
+### 2. 状态检查与发散诊断
+```python
+for p in g_i.Phases:
+    # 检查是否成功完成
+    reach = getattr(p, 'Reached', None)
+    log_info = getattr(p, 'LogInfo', '')
+    print(f"阶段 [{p.Identification}]: 计算完成={bool(reach)}, Log={log_info[:100]}")
+    
+    # 对 Safety 阶段，打印折减乘数 Msf
+    if p.CalculationType == "Safety" and reach:
+        print(f"==> 极限安全系数 Msf = {reach.Msf}")
+```
+
+---
+
+## 模块 6：后处理数据提取与云图导出 (Output API)
+
+使用 `Plaxis3DOutput.exe` 批量提取指标并导出云图截图。
+
+### 1. 连接 Output 服务
+```python
+session_out = PlaxisSession(r"D:\Seequent\PLAXIS 3D 2024\Plaxis3DOutput.exe")
+s_o, g_o = session_out.start()
+s_o.open(project_p3d_path)
+```
+
+### 2. 提取安全系数与极值
+```python
+results = {}
+for p in g_o.Phases:
+    p_name = p.Identification.value if hasattr(p.Identification, 'value') else str(p.Identification)
+    if "Safety" in p_name:
+        last_step = p.Steps[-1]
+        msf = last_step.Reached.Msf.value
+        results['SafetyFactor_Fs'] = msf
+        print(f"稳定分析最终安全系数 Fs = {msf:.3f}")
+```
+
+### 3. 提取特征场变量 (孔压、基质吸力、位移)
+```python
+def extract_phase_field_summary(g_o, phase, target_step=-1):
+    step = phase.Steps[target_step]
+    soil_rt = g_o.ResultTypes.Soil
+    summary = {}
+    
+    # 1. 孔隙水压力与吸力极值
+    for field in ['PWater', 'PActive', 'Suction', 'DegreeOfSaturation', 'GroundwaterHead']:
+        if hasattr(soil_rt, field):
+            typ = getattr(soil_rt, field)
+            vals = g_o.getresults(step, typ, 'Soil')
+            vals = [float(v) for v in vals if v is not None]
+            if vals:
+                summary[field] = {'min': min(vals), 'max': max(vals)}
+                
+    # 2. 变形极值
+    for field in ['Ux', 'Uy', 'Uz']:
+        if hasattr(soil_rt, field):
+            typ = getattr(soil_rt, field)
+            vals = g_o.getresults(step, typ, 'Soil')
+            vals = [float(v) for v in vals if v is not None]
+            if vals:
+                summary[field] = {'min': min(vals), 'max': max(vals)}
+                
+    return summary
+```
+
+### 4. 提取关键监测点数值
+```python
+# 在关键截面 (如护壁根部、滑动带控制点) 提取单点时程
+key_point = (18.65, 10.0, 3.5)
+step = g_o.Phases[-1].Steps[-1]
+
+p_water = g_o.getsingleresult(step, g_o.ResultTypes.Soil.PWater, key_point)
+u_total = g_o.getsingleresult(step, g_o.ResultTypes.Soil.Utot, key_point)
+print(f"监测点 {key_point}: 孔压={p_water} kPa, 总位移={u_total} m")
+```
+
+### 5. 自动导出结果云图截图
+```python
+output_img_dir = Path("./analysis_plots")
+output_img_dir.mkdir(exist_ok=True)
+
+# 语法: g_o.export(<target_path>, <width>, <height>)
+target_img = output_img_dir / "pore_pressure_distribution.png"
+g_o.export(str(target_img), 1920, 1080)
+print(f"云图已导出: {target_img}")
+```
+
+---
+
+## 端到端全流程可执行脚手架范式
+
+以下代码为 AI 执行完整建模求解的标准调用模板：
+
+```python
+import os, sys, time, shutil, json
+from pathlib import Path
+from plxscripting.easy import new_server
+
+# 1. 准备工作区工程 (克隆基准模板)
+TEMPLATE_P3D = Path(r"D:\防排水\templates\base_model.p3d")
+WORK_DIR = Path(r"D:\防排水\runs\run_case_01")
+WORK_DIR.mkdir(parents=True, exist_ok=True)
+
+# 物理克隆 .p3d 及 .p3dat
+work_p3d = WORK_DIR / "model.p3d"
+work_p3dat = WORK_DIR / "model.p3dat"
+if not work_p3d.exists():
+    shutil.copy2(TEMPLATE_P3D, work_p3d)
+    shutil.copytree(TEMPLATE_P3D.with_suffix(".p3dat"), work_p3dat)
+
+# 2. 启动 Input 并建模
+session_in = PlaxisSession(r"D:\Seequent\PLAXIS 3D 2024\Plaxis3DInput.exe", port=10001)
+s_i, g_i = session_in.start()
+
+try:
+    s_i.open(str(work_p3d))
+    g_i.gotosoil()
+
+    # (A) 调整材料参数与地层标高
+    # ... create_soil_material(...) / setsoillayerlevel ...
+
+    # (B) 建立防排水构件与网格
+    g_i.gotostructures()
+    # ... plate / linedrain / intersect ...
+    g_i.gotomesh()
+    g_i.mesh(0.05)
+
+    # (C) 编排工况并保存
+    g_i.gotostages()
+    # ... 配置 Excavation -> Fill -> Rain -> Safety ...
+    g_i.save()
+
+    # (D) 求解计算
+    s_i.calculate()
+    g_i.save()
+finally:
+    session_in.close()
+
+# 3. 启动 Output 提取成果指标
+session_out = PlaxisSession(r"D:\Seequent\PLAXIS 3D 2024\Plaxis3DOutput.exe", port=10002)
+s_o, g_o = session_out.start()
+
+try:
+    s_o.open(str(work_p3d))
+    # 提取安全系数与极值 JSON
+    report = {
+        "phases": [p.Identification.value for p in g_o.Phases],
+        "safety_factor": getattr(g_o.Phases[-1].Steps[-1].Reached.Msf, 'value', None)
+    }
+    (WORK_DIR / "results.json").write_text(json.dumps(report, indent=2, ensure_ascii=False))
+    # 导出云图
+    g_o.export(str(WORK_DIR / "final_plot.png"), 1920, 1080)
+finally:
+    session_out.close()
+
+print("PLAXIS 端到端自动化运行完成！")
+```
+
+---
+
+## 核心避坑与已知限制总结
+
+1. **模板克隆原则**：绝对禁止直接用 `s_i.new()` 创建无根工程；一律采用 `shutil.copytree` 复制已存在的干净基准工程（`.p3d` 与 `.p3dat`），再通过 `s_i.open()` 加载。
+2. **模式进入顺序不可颠倒**：打开工程后必须先进入 `g_i.gotosoil()` 唤醒几何核心；后续严格按 `gotosoil() -> gotostructures() -> gotomesh() -> gotostages()` 流程推进。
+3. **几何求交必做**：在结构模式下定义任何板（Plate）、接触面（Interface）、排水线（LineDrain）后，必须调用 `g_i.intersect()`，否则结构与土体不会生成拓扑共面网格。
+4. **非水平土层只读限制**：`Zone.Top` 和 `Zone.Bottom` 属性为只读，修改土层顶底标高必须使用 `g_i.commands('setsoillayerlevel <Borehole> <Soillayer> Top|Bottom <val>')`。
+5. **DrainageType 限制**：土体材料的 `DrainageType`（Drained / Undrained / Non-porous）不能通过外部 Python API 更改，需在模板工程的材料库中预先设好。
+6. **进程守护与端口清理**：务必使用 `try...finally` 包裹 PLAXIS 会话，确保异常时即使报错也能彻底杀死后台 `Plaxis3DInput.exe` / `Plaxis3DOutput.exe` 进程，防止端口与文件锁死。
+
+---
+
+# 附录 A：上游 v2.0 旧版内容（原样保留）
+
+> 上游 2026-10-09 的新版（上文）改写为通用的端到端教程，删去了下面这些实操细节（连接、路径、命令日志核验、排水对象、保存失败与 data.convd.rr1 处理等）。这些内容经实测仍然有效，附录 B 的经验也以它们为基础，所以原文保留。
 
 使用 Python `plxscripting` 连接 PLAXIS 3D Input 的 Remote Scripting Server，完成建模、模型修改、核验和必要的项目文件修复。
 
@@ -309,6 +858,15 @@ vals = g_o.getresults(phase, g_o.ResultTypes.Soil.PWater, "node")
 - Output 可以和 Input 共用端口号，但同一时刻端口只能属于一个进程。先用 `Get-NetTCPConnection -LocalPort <port>` 判断当前是 Input 还是 Output。
 - 中文路径和全角冒号在脚本/命令历史里可能变成 `?`，导致打开空模型或异常模型。需要自动化验证时，优先复制到短 ASCII 路径，例如 `C:\plaxis_current_ascii\model.p3d`。
 
+---
+
+# 附录 B：实测补充的坑与经验（2026-09-30 起）
+
+> **与上游新版说法不一致之处，以本附录的实测为准**（PLAXIS 3D 2024.1）：
+> - 新版说“绝对禁止 `s_i.new()`”：实测 `s.new()` 新建项目后用 `save "路径"` 直接另存是可靠的（新项目、无旧计算结果时），见“环境与连接补充（2026-09-30）”。模板克隆仍是改已有工程时的稳妥做法。
+> - 新版说“`DrainageType` 不能通过外部 API 更改”：实测用字符串 `setproperties` 可以设置，包括 `"Drained"`、`"Undrained (C)"`、`"Non-porous"`，但要先设 SoilModel/DrainageType 再设参数，见“材料属性的只读陷阱”和“不排水黏土与分层土中的桩”。
+> - 长时间计算：新版示例用 `s_i.calculate()`；实测须 `new_server(..., request_timeout=None)`，否则计算中途超时断开。
+
 ## 环境与连接补充（2026-09-30）
 
 - 系统 Python 3.14 没有 `distutils`，`import plxscripting.easy` 会报 `No module named 'distutils'`。解决：建一个 shim 目录 `shim/distutils/__init__.py`（空）+ `shim/distutils/version.py`：
@@ -484,3 +1042,21 @@ def bb(n):
 - **不排水 (C) 推覆早期"土体似乎要倒塌…[错误代码: 111]"（2026-10-15 实测）**：Undrained (C) 黏土默认 `TensionCutOff True`、`TensileStrength 0`，地表附近总应力很小，桩后（主动侧）一卸载就进入受拉截断，荷载控制推覆在很小荷载下停住（D = 0.273 m 桩约 0.7 kN 即停，增量位移集中在地表桩背）。解决（同 PISA 有限元做法：土体可通过负孔压承受拉力，桩土界面不受拉、可脱开）：土体材料 `("TensionCutOff", False)`；另建一份界面专用材料（同参数）保持 `TensionCutOff True`，界面 `MaterialMode "Custom"` 用它。修改后同一模型完整推到 1000 步。
 - 定位"坍塌"位置的办法：Output 中 `getresults(phase, ResultTypes.Soil.dUtot, "node")` 与 X/Y/Z 一起取出，按 dUtot 排序看最大值所在坐标。
 - 土层分得很细（0.25 m）而计算域很大时，网格被层面强制加密：D = 0.762 m、30 m × 15 m 计算域时单元数 9.3 万；把上部层厚改为 0.5 m 后降到 2.2 万。层面离桩端只有 1 cm 时会出现 "small in-surface proximity / small edges" 警告，把离桩端 6 cm 内的层面移到桩端标高即可。
+
+## 脚本可移植性与存储步（2026-10-17，筒型基础脚本包）
+
+- **PLAXIS 自带 Python**：`C:\ProgramData\Seequent\PLAXIS Python Distribution V2\python\python.exe`（3.8.18，自带 plxscripting、numpy 1.24，**没有 pandas、python-docx**）。给其他电脑用的脚本优先只依赖 numpy，用它运行可免装环境。
+- **distutils shim 只在 Python ≥ 3.12 时加载**：3.8 自带 distutils；无条件 `sys.path.insert(0, shim)` 会遮住真的 distutils，且旧 shim 依赖 `packaging`（3.8 环境可能没有）。做法：`if sys.version_info >= (3, 12): sys.path.insert(...)`，shim 内用正则解析版本号自写比较，不依赖第三方包。
+- **MaxStepsStored < 实际步数时 ΣMstage 可能取不全（未验证）**：曲线点逐步记录，但 Output 的 `Phase.Steps` 只含存储步，逐步读 `Reached.SumMstage` 会比曲线短、按序号对不上（错位）。对策：先试 `getcurveresultspath(cn, P2, P2, ResultTypes.<组>.SumMstage)`，再试存储步，长度都对不上就改为存全部步重算。是否存在 SumMstage 的曲线结果类型尚待实测。
+- **存储步占用**：实测约 0.7 KB/单元/存储步（1.6 万单元每步约 11 MB）；设 MaxStepsStored = 50 实际落盘 71 个 data.### 文件（多约 40%）。
+- `mesh` 返回提示中文为“已生成 N 个单元”，英文界面不同，解析用 `r'(\d+)\s*(?:个单元|elements)'`。
+- python-docx 表格：`cell.text = ...` 生成的 run 没有 rFonts 节点，直接 `run._element.rPr.rFonts.set(...)` 报 `'NoneType' object has no attribute 'set'`；先设 `run.font.name` 再设东亚字体。
+
+## 推覆以 102 结束但未到破坏平台（2026-10-20，筒型基础 112 个模型实测）
+
+- **现象**：荷载控制推覆（MaxLoadFractionPerStep 0.002、MaxSteps 1000、弧长控制）全部 112 个模型的 Phase 2 都以“荷载步长不足（错误代码 102 Not enough load steps）”、Failed (soft) 结束，ΣMstage 只到 0.37～0.58，筒盖转角 0.74°～2.09°，末端切线刚度（最后 50 步割线）仍为初始刚度的 2.5%～5.5%，曲线还在上升，**没有到破坏平台**。上文“102 常表示已到破坏平台”只在末端相对刚度接近 0 时成立；102 本身只表示用满 MaxSteps 时 ΣMstage < 1。
+- **原因**：前 14～34 步按上限 0.002 推进，土体屈服后 PLAXIS 自动缩小步长，最后 100 步平均每步 ΔΣMstage 约 0.00009（0.000055～0.000117），1000 步几乎都耗在屈服段。验证变体把步长上限减半（0.001）、MaxSteps 加倍（2000），终点 ΣMstage 几乎不变（0.3937 对 0.3935）：终点由“步长上限 × 步数”的预算决定。H_ref 取估算承载力约 2 倍时尤其明显。
+- **判断与处理**：每个工况检查末端切线刚度与初始刚度之比、最后若干步的 ΔM；小转角指标（如 θ = 0.25°、0.5° 处的弯矩）只要交点落在已算曲线内就有效，但终点 M_max 不能当极限承载力。需要极限承载力时：保持步长上限、把 MaxSteps 加到 3000～5000；或改为在加载点施加水平位移的位移控制推覆（不要加在筒盖上，否则 M/H 改变）；或经验证后加大步长上限。三者都要重算推覆阶段。
+- **转角取法**：加载柱用单节点与筒盖相连时，用柱顶与筒盖中心水平位移差 /22 m 算的“柱转角”在筒盖转角 0.25° 时为 0.254°～0.358°（1.015～1.434 倍），差别来自连接处局部变形；筒基础转角应取筒盖前后缘竖向位移差 / D。
+- **逐步 ΣMstage 的来源**：工作站上 Codex 是从结果目录的原始 `data.c02` 逐步读出荷载乘子并与曲线点逐值对齐的（按 2.00 格式、记录长度、连续步序校验）。具体解析代码在工作站脚本中，本机未验证；上文“ΣMstage 可能取不全”的问题可用此法绕过。
+- **教训（2026-10-21）：要“推到破坏”就用位移控制，批量前先试算确认到平台。** 四翼板筒型基础 108 个工况沿用电杆课题的荷载控制设置（步长上限 0.002、1000 步），全部没推到平台，极限承载力要整批重算。电杆课题已有“0.002、1000 步只推到倾斜率约 143‰”的预警（见上文），当时应据此改设置。做法：在柱顶加载点加指定位移（只规定荷载方向，其余方向和转动放开），新推覆阶段从安装阶段开始；力从加载点反力读（半模型 ×2）；先在代表工况上试算，确认到平台、小转角指标与荷载控制一致，再批量计算。
