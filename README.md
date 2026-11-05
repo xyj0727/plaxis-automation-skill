@@ -33,18 +33,13 @@ codex plugin marketplace upgrade plaxis-automation-skill
 
 Codex CLI 不在 PATH 时，使用本机实际安装的 `codex.exe` 完整路径。插件能力因客户端版本而异；本仓库沿用可被 Codex 识别的兼容 marketplace 格式，见 [OpenAI 插件打包说明](https://developers.openai.com/plugins/build/plugins)。
 
-若所用客户端无法安装该插件，可使用技能安装器：
-
-```powershell
-npx --yes skills add https://github.com/xyj0727/plaxis-automation-skill -g -a codex -y --copy
-```
-
-`npx` 安装不自动更新，手动执行 `npx skills update -g`。更新前先备份自己追加的经验。
+插件使用标准 `skills/` 加载目录，入口引用插件内共享的正文和知识文件。请按上述插件方式安装完整仓库，更新前备份自己追加的经验。
 
 ## 文件与保留方式
 
 |位置|用途|
 |---|---|
+|[skills/plaxis-automation/SKILL.md](skills/plaxis-automation/SKILL.md)|Codex 插件加载入口，优先路由版本说明和相关知识|
 |[SKILL.md](SKILL.md)|既有建模指南与实测经验；本次仅在原有内容末尾追加知识入口|
 |[references/book/index.md](references/book/index.md)|按任务和章节检索教程知识|
 |[scripts/book_lookup.py](scripts/book_lookup.py)|关键词/页码检索与逐页覆盖检查，无额外依赖|

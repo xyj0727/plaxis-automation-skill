@@ -1,10 +1,10 @@
 {
   "name": "plaxis-automation",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "PLAXIS 3D 自动化建模、求解、Output提取与诊断，含完整教程知识、案例参数和逐页索引。",
   "author": { "name": "xyj0727" },
   "homepage": "https://github.com/xyj0727/plaxis-automation-skill",
   "repository": "https://github.com/xyj0727/plaxis-automation-skill",
   "license": "MIT",
-  "skills": "./"
+  "skills": "./skills/"
 }

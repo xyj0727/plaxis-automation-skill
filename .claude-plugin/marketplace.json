@@ -9,12 +9,12 @@
       "name": "plaxis-automation",
       "source": "./",
       "description": "PLAXIS 3D 自动化建模、求解、Output提取与诊断，含378页教程知识、材料模型、案例参数及逐页索引。",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "author": { "name": "xyj0727" },
       "homepage": "https://github.com/xyj0727/plaxis-automation-skill",
       "license": "MIT",
       "strict": false,
-      "skills": ["./"]
+      "skills": ["./skills/"]
     }
   ]
 }
