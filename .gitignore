@@ -6,3 +6,10 @@ __pycache__/
 *.p3dlog
 data.convd.rr1
 3DCalc*/
+*.p3d
+*.p3dat/
+*.p3dlog
+*.bak*
+*.pdf
+*.zip
+work/

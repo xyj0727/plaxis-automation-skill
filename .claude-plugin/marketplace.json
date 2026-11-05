@@ -2,15 +2,15 @@
   "name": "plaxis-automation-skill",
   "owner": { "name": "xyj0727" },
   "metadata": {
-    "description": "PLAXIS 3D automation Claude Code skill (improved). Original author: Noahpeerless (https://github.com/Noahpeerless/plaxis-automation-skill)"
+    "description": "PLAXIS 3D automation skills for Codex, with modeling experience and a page-indexed tutorial knowledge base."
   },
   "plugins": [
     {
       "name": "plaxis-automation",
       "source": "./",
-      "description": "通过 PLAXIS 3D Remote Scripting API（plxscripting）自动化创建、修改、修复和验证 PLAXIS 3D 有限元模型。原作者 Noahpeerless。",
-      "version": "1.2.0",
-      "author": { "name": "Noahpeerless (original), xyj0727 (modifications)" },
+      "description": "PLAXIS 3D 自动化建模、求解、Output提取与诊断，含378页教程知识、材料模型、案例参数及逐页索引。",
+      "version": "2.0.0",
+      "author": { "name": "xyj0727" },
       "homepage": "https://github.com/xyj0727/plaxis-automation-skill",
       "license": "MIT",
       "strict": false,

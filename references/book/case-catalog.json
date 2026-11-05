@@ -1,0 +1,1427 @@
+{
+  "schema_version": 1,
+  "source_title": "PLAXIS 3D基础教程",
+  "book_software_version": "PLAXIS 3D 2013-era",
+  "target_software_context": "PLAXIS 3D 2024.1 (not validated by these notes)",
+  "reading_scope": {
+    "pdf_pages": [
+      266,
+      378
+    ],
+    "reviewed_page_count": 113,
+    "printed_pages": [
+      253,
+      357
+    ],
+    "color_insert_pdf_pages": [
+      371,
+      378
+    ]
+  },
+  "parameter_status": "source-defined-but-not-confirmed",
+  "actual_readback_status": "unset-or-not-read-back",
+  "case_count": 10,
+  "cases": [
+    {
+      "id": "11A",
+      "title": "刚性实体基础沉降",
+      "pdf_pages": [
+        266,
+        278
+      ],
+      "printed_pages": [
+        253,
+        265
+      ],
+      "reference": "foundation-excavation-caisson.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "domain_m": {
+          "x": [
+            0,
+            75
+          ],
+          "y": [
+            0,
+            75
+          ],
+          "z": [
+            -40,
+            0
+          ]
+        },
+        "symmetry": "quarter",
+        "basement_quarter_size_m": [
+          18,
+          18,
+          2
+        ]
+      },
+      "materials": {
+        "tables": [
+          "11-1"
+        ],
+        "models": [
+          "Mohr-Coulomb Drained soil",
+          "Linear elastic Non-porous building"
+        ],
+        "table_pdf_pages": [
+          271
+        ]
+      },
+      "groundwater": {
+        "head_z_m": -2
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "symmetry_planes": [
+          "x=0",
+          "y=0"
+        ],
+        "bottom": "underlying hard rock represented by suitable bottom boundary"
+      },
+      "loads": {
+        "equivalent_building_unit_weight_kN_m3": 50,
+        "duplicate_load_warning": "Building weight represents total permanent and variable loading."
+      },
+      "phases": [
+        {
+          "id": "Initial",
+          "type": "K0",
+          "soil": "all clay",
+          "structures": "inactive"
+        },
+        {
+          "id": "Construction",
+          "type": "Plastic",
+          "action": "replace basement volume material with equivalent building"
+        }
+      ],
+      "mesh": {
+        "global": "Coarse (book UI)",
+        "local_building_factor": "about 0.7 after refinement (book UI)",
+        "example_elements": 3215,
+        "example_nodes": 5181
+      },
+      "outputs": [
+        "total displacement",
+        "uz",
+        "phase versus incremental displacement"
+      ],
+      "uncertainties": [
+        "No explicit construction excavation sequence in A.",
+        "Building solid simplification does not provide plate internal forces.",
+        "Modern control defaults not read back."
+      ]
+    },
+    {
+      "id": "11B",
+      "title": "筏板基础沉降与内力",
+      "pdf_pages": [
+        279,
+        284
+      ],
+      "printed_pages": [
+        266,
+        271
+      ],
+      "reference": "foundation-excavation-caisson.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "inherits": "11A",
+        "floor_thickness_m": 0.5,
+        "wall_thickness_m": 0.3,
+        "column_xy_m": [
+          6,
+          6
+        ],
+        "column_z_m": [
+          -2,
+          0
+        ]
+      },
+      "materials": {
+        "tables": [
+          "11-1",
+          "11-2",
+          "11-3"
+        ],
+        "table_pdf_pages": [
+          271,
+          281,
+          282
+        ],
+        "soil_Eref_kPa": 5000,
+        "soil_Einc_kPa_m": 500,
+        "soil_zref_m": 0
+      },
+      "groundwater": {
+        "head_z_m": -2
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "symmetry_planes": [
+          "x=0",
+          "y=0"
+        ]
+      },
+      "loads": {
+        "column_Fz_kN": -11650,
+        "wall_qz_kN_m": -385,
+        "floor_qz_kPa": -5.3
+      },
+      "phases": [
+        {
+          "id": "Initial",
+          "type": "K0",
+          "action": "all clay; no structural elements"
+        },
+        {
+          "id": "Excavate",
+          "type": "Plastic",
+          "action": "deactivate basement soil; activate walls"
+        },
+        {
+          "id": "Basement",
+          "type": "Plastic",
+          "action": "activate floor and beams"
+        },
+        {
+          "id": "Load",
+          "type": "Plastic",
+          "action": "activate point, line and surface loads"
+        }
+      ],
+      "mesh": {
+        "global": "Coarse (book UI)"
+      },
+      "outputs": [
+        "uz on y=6 m vertical section",
+        "plate M11 and node tables"
+      ],
+      "uncertainties": [
+        "Structural unit weights are overlap-adjusted example values, not generic concrete weights.",
+        "Geometric edits require remeshing and phase checks."
+      ]
+    },
+    {
+      "id": "11C",
+      "title": "Embedded桩筏基础",
+      "pdf_pages": [
+        284,
+        286
+      ],
+      "printed_pages": [
+        271,
+        273
+      ],
+      "reference": "foundation-excavation-caisson.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "inherits": "11B",
+        "pile_length_m": 20,
+        "pile_top_z_m": -2,
+        "pile_bottom_z_m": -22,
+        "pile_xy_m": [
+          [
+            6,
+            6
+          ],
+          [
+            18,
+            6
+          ],
+          [
+            6,
+            18
+          ],
+          [
+            18,
+            18
+          ]
+        ],
+        "pile_size_conflict": {
+          "text_diameter_m": 1.5,
+          "table_radius_m": 1.5
+        }
+      },
+      "materials": {
+        "tables": [
+          "11-4"
+        ],
+        "table_pdf_pages": [
+          284
+        ],
+        "E_kPa": 30000000.0,
+        "gamma_kN_m3": 6,
+        "Ttop_max_kN_m": 200,
+        "Tbot_max_kN_m": 500,
+        "Fmax_kN": 10000.0
+      },
+      "groundwater": {
+        "inherits": "11B"
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "symmetry_planes": [
+          "x=0",
+          "y=0"
+        ]
+      },
+      "loads": {
+        "inherits": "11B"
+      },
+      "phases": [
+        {
+          "inherits": "11B",
+          "change": "activate piles together with basement walls in excavation phase (teaching simplification)"
+        }
+      ],
+      "mesh": {
+        "global": "Coarse (book UI)"
+      },
+      "outputs": [
+        "floor M11",
+        "pile axial N",
+        "pile end reactions"
+      ],
+      "uncertainties": [
+        "Diameter/radius conflict must be resolved before building.",
+        "Book skin-resistance mode word must be mapped to actual version enum."
+      ]
+    },
+    {
+      "id": "12",
+      "title": "砂土基坑开挖支护",
+      "pdf_pages": [
+        287,
+        298
+      ],
+      "printed_pages": [
+        274,
+        285
+      ],
+      "reference": "foundation-excavation-caisson.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "domain_m": {
+          "x": [
+            0,
+            80
+          ],
+          "y": [
+            0,
+            50
+          ],
+          "z": [
+            -20,
+            0
+          ]
+        },
+        "pit_m": {
+          "x": [
+            30,
+            50
+          ],
+          "y": [
+            20,
+            32
+          ],
+          "final_z": -6.5
+        },
+        "layer_z_m": [
+          0,
+          -1,
+          -9.5,
+          -11,
+          -20
+        ],
+        "wall_bottom_z_m": -11,
+        "strut_x_m": [
+          35,
+          40,
+          45
+        ],
+        "strut_z_m": -1
+      },
+      "materials": {
+        "tables": [
+          "12-1",
+          "12-2",
+          "12-3",
+          "12-4",
+          "12-5"
+        ],
+        "table_pdf_pages": [
+          289,
+          290,
+          291,
+          292
+        ],
+        "models": [
+          "HS Drained fill/sand",
+          "HS Undrained A clay",
+          "orthotropic plate intended",
+          "elastic beams/anchors"
+        ]
+      },
+      "groundwater": {
+        "initial_head_z_m": -4,
+        "excavated_zone": "Dry",
+        "pit_below_sand_head_z_m": -6.5,
+        "below_pit_clay": "interpolated"
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "wall_axis1_z_book_value": -1,
+        "interfaces": "both sides of wall"
+      },
+      "loads": {
+        "anchor_prestress_kN": 200,
+        "surface_qz_kPa": -20,
+        "surface_xy_corners_m": [
+          [
+            34,
+            19
+          ],
+          [
+            41,
+            19
+          ],
+          [
+            41,
+            12
+          ],
+          [
+            34,
+            12
+          ]
+        ]
+      },
+      "phases": [
+        {
+          "id": "Initial",
+          "type": "K0"
+        },
+        {
+          "id": "1",
+          "action": "excavate to -1; activate walls/interfaces"
+        },
+        {
+          "id": "2",
+          "action": "activate waling/struts"
+        },
+        {
+          "id": "3",
+          "action": "activate anchors and prestress"
+        },
+        {
+          "id": "4",
+          "action": "excavate to -6.5 and adjust water conditions"
+        },
+        {
+          "id": "5",
+          "action": "activate external surcharge"
+        }
+      ],
+      "mesh": {
+        "global": "Coarse (book UI)"
+      },
+      "outputs": [
+        "Psteady preview",
+        "plastic point types",
+        "wall displacement",
+        "epsilon1-effective sigma1 curves",
+        "effective sigmayy-sigmazz path"
+      ],
+      "uncertainties": [
+        "Table says isotropic but E1/E2 and text explicitly anisotropic.",
+        "Actual nearest stress-point coordinates differ from requested coordinates."
+      ]
+    },
+    {
+      "id": "13",
+      "title": "吸力桩四角度工作加载",
+      "pdf_pages": [
+        299,
+        303
+      ],
+      "printed_pages": [
+        286,
+        290
+      ],
+      "reference": "foundation-excavation-caisson.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "domain_m": {
+          "x": [
+            -30,
+            30
+          ],
+          "y": [
+            -30,
+            30
+          ],
+          "z": [
+            -30,
+            0
+          ]
+        },
+        "pile_length_m": 10,
+        "pile_diameter_m": 4.5,
+        "load_point_m": [
+          2.25,
+          0,
+          -7
+        ],
+        "reinforced_band_z_m": [
+          -7.5,
+          -6.5
+        ],
+        "bottom": "interface only; no closing plate"
+      },
+      "materials": {
+        "tables": [
+          "13-1",
+          "13-2"
+        ],
+        "table_pdf_pages": [
+          300,
+          302
+        ],
+        "soil": "MC Undrained B",
+        "Eref_kPa": 1000,
+        "Einc_kPa_m": 1000,
+        "su_ref_kPa": 1,
+        "su_inc_kPa_m": 4,
+        "zref_m": 0,
+        "K0x_K0y": [
+          0.5,
+          0.5
+        ],
+        "Rinter_soil": 0.7,
+        "Rinter_bottom_interface": 1
+      },
+      "groundwater": {
+        "sea_head_z_m": 50
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "wall_interfaces": "both sides",
+        "tension_cutoff": "disabled in this case only"
+      },
+      "loads": {
+        "angle_Fx_Fz_deg_kN": [
+          [
+            30,
+            3897,
+            2250
+          ],
+          [
+            40,
+            3447,
+            2893
+          ],
+          [
+            50,
+            2893,
+            3447
+          ],
+          [
+            60,
+            2250,
+            3897
+          ]
+        ],
+        "Fz_sign": "positive upward"
+      },
+      "phases": [
+        {
+          "id": "Initial",
+          "type": "K0",
+          "structures": "inactive"
+        },
+        {
+          "id": "Install",
+          "type": "Plastic",
+          "action": "activate plates/interfaces, assign thick band; no load"
+        },
+        {
+          "id": "AngleBranches",
+          "count": 4,
+          "parent": "Install",
+          "reset_displacement": true
+        }
+      ],
+      "mesh": {
+        "global": "Coarse (book UI)",
+        "load_point_factor": 0.5
+      },
+      "outputs": [
+        "pile wall total displacement",
+        "local deformation near anchor",
+        "compare load direction"
+      ],
+      "uncertainties": [
+        "No suction installation simulation.",
+        "Service load response is not ultimate capacity.",
+        "Continuity of displacement does not prove steel buckling/strength adequacy."
+      ]
+    },
+    {
+      "id": "14",
+      "title": "软土路堤固结与安全",
+      "pdf_pages": [
+        304,
+        316
+      ],
+      "printed_pages": [
+        291,
+        303
+      ],
+      "reference": "embankment-tunnel-drawdown.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "domain_m": {
+          "x": [
+            0,
+            60
+          ],
+          "y": [
+            0,
+            2
+          ],
+          "z": [
+            -10,
+            4
+          ]
+        },
+        "symmetry": "half cross section",
+        "crest_full_width_m": 16,
+        "height_m": 4,
+        "slope": "1:3",
+        "layer_z_m": [
+          0,
+          -3,
+          -6,
+          -10
+        ],
+        "drains": {
+          "x_m": [
+            1,
+            3,
+            5,
+            7,
+            9,
+            11,
+            13,
+            15,
+            17
+          ],
+          "y_m": 1,
+          "z_m": [
+            -6,
+            0
+          ]
+        }
+      },
+      "materials": {
+        "tables": [
+          "14-1"
+        ],
+        "table_pdf_pages": [
+          305,
+          306
+        ],
+        "models": [
+          "HS embankment/sand",
+          "Soft Soil Undrained A peat/clay"
+        ],
+        "permeability_units": "m/day",
+        "void_ratio_and_ck": "explicit in reference table"
+      },
+      "groundwater": {
+        "head_z_m": -1
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "hydraulic_closed": [
+          "XMin",
+          "YMin",
+          "YMax"
+        ],
+        "hydraulic_open": [
+          "XMax",
+          "ZMin",
+          "ZMax"
+        ]
+      },
+      "loads": {
+        "type": "staged self-weight of two embankment layers"
+      },
+      "phases": [
+        {
+          "id": "Initial",
+          "type": "K0",
+          "embankment": "inactive"
+        },
+        {
+          "id": "NoDrain1",
+          "type": "Consolidation",
+          "days": 2,
+          "action": "first fill"
+        },
+        {
+          "id": "NoDrain2",
+          "type": "Consolidation",
+          "days": 30,
+          "action": "hold"
+        },
+        {
+          "id": "NoDrain3",
+          "type": "Consolidation",
+          "days": 1,
+          "action": "second fill"
+        },
+        {
+          "id": "NoDrain4",
+          "type": "Consolidation",
+          "stop_abs_Pexcess_kPa": 1
+        },
+        {
+          "id": "DrainAlternative",
+          "parent": "Initial",
+          "first_three_days": [
+            1,
+            1,
+            1
+          ],
+          "drains": "active",
+          "last_stop_abs_Pexcess_kPa": 1
+        },
+        {
+          "id": "SafetyBranches",
+          "parent": "each relevant construction/consolidation phase",
+          "reset_displacement": true
+        }
+      ],
+      "mesh": {
+        "global": "Coarse (book UI)"
+      },
+      "outputs": [
+        "Pexcess-time",
+        "settlement",
+        "toe heave",
+        "incremental failure mechanism",
+        "SigmaMsf plateau"
+      ],
+      "uncertainties": [
+        "Clay K0 table cell is dash.",
+        "Drain comparison also changes stage duration.",
+        "Safety displacements are not service deformations."
+      ]
+    },
+    {
+      "id": "15",
+      "title": "盾构推进与地表沉降",
+      "pdf_pages": [
+        317,
+        331
+      ],
+      "printed_pages": [
+        304,
+        318
+      ],
+      "reference": "embankment-tunnel-drawdown.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "domain_m": {
+          "x": [
+            -20,
+            0
+          ],
+          "y": [
+            0,
+            80
+          ],
+          "z": [
+            -18,
+            2
+          ]
+        },
+        "layers_z_m": [
+          2,
+          0,
+          -12,
+          -18
+        ],
+        "shield_length_m": 9,
+        "outer_radius_m": 4.25,
+        "outer_polycurve_start_z_m": -4.75,
+        "inner_radius_m": 4,
+        "inner_polycurve_start_z_m": -5,
+        "derived_common_center_z_m": -9,
+        "derived_outer_bottom_z_m": -13.25,
+        "slice_length_m": 1.5,
+        "plane_y_m": [
+          25.0,
+          26.5,
+          28.0,
+          29.5,
+          31.0,
+          32.5,
+          34.0,
+          35.5,
+          37.0,
+          38.5,
+          40.0,
+          41.5
+        ]
+      },
+      "materials": {
+        "tables": [
+          "15-1",
+          "15-2"
+        ],
+        "table_pdf_pages": [
+          318,
+          324
+        ],
+        "models": [
+          "MC Drained soils",
+          "Non-porous concrete solids",
+          "elastic shield plates"
+        ]
+      },
+      "groundwater": {
+        "global_head_z_m": 0,
+        "excavated_volumes": "Dry",
+        "excavated_volume_scopes": [
+          "cross_section_A_inner_tunnel_soil",
+          "cross_section_B_liner_placeholder_soil"
+        ]
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "symmetry_plane": "x=0",
+        "interface": "outer cylinder positive side per book geometry"
+      },
+      "loads": {
+        "face_pressure_ref_kPa": 90,
+        "face_pressure_gradient_kPa_m": 14,
+        "grout_pressure_ref_kPa": 100,
+        "grout_pressure_gradient_kPa_m": 20,
+        "pressure_reference_z_m": -4.75,
+        "jacking_pressure_kPa": -635.4,
+        "contraction_ref_percent": 0.5,
+        "contraction_axial_gradient_percent_m": -0.0667
+      },
+      "phases": [
+        {
+          "id": "Initial",
+          "type": "K0"
+        },
+        {
+          "id": "1",
+          "type": "Plastic",
+          "action": "initial tunnel state, shield face y35.5",
+          "source_pdf_pages": [
+            326,
+            327,
+            328,
+            329
+          ],
+          "region_label_scope": "Axial audit labels A-D below are editorial; source cross-section A is inner tunnel soil and source cross-section B is the liner annulus placeholder soil.",
+          "axial_regions": [
+            {
+              "axial_zone": "A",
+              "y_range_m": [
+                0,
+                25
+              ],
+              "role": "previous excavation represented temporarily by shield plates and contraction",
+              "inner_soil_A": {
+                "active": false,
+                "water_conditions": "Dry"
+              },
+              "liner_placeholder_soil_B": {
+                "active": false,
+                "water_conditions": "Dry"
+              },
+              "plate_active": true,
+              "positive_interface_active": true,
+              "surface_contraction": {
+                "active": true,
+                "distribution": "uniform",
+                "reference_percent": 0.5
+              },
+              "grout_load_active": false
+            },
+            {
+              "axial_zone": "B",
+              "y_range_m": [
+                25,
+                26.5
+              ],
+              "role": "tail void grouting",
+              "inner_soil_A": {
+                "active": false,
+                "water_conditions": "Dry"
+              },
+              "liner_placeholder_soil_B": {
+                "active": false,
+                "water_conditions": "Dry"
+              },
+              "plate_active": false,
+              "positive_interface_active": false,
+              "surface_contraction": {
+                "active": false
+              },
+              "grout_load_active": true
+            },
+            {
+              "axial_zone": "C",
+              "y_range_m": [
+                26.5,
+                28
+              ],
+              "role": "uniform shield tail",
+              "inner_soil_A": {
+                "active": false,
+                "water_conditions": "Dry"
+              },
+              "liner_placeholder_soil_B": {
+                "active": false,
+                "water_conditions": "Dry"
+              },
+              "plate_active": true,
+              "positive_interface_active": true,
+              "surface_contraction": {
+                "active": true,
+                "distribution": "uniform",
+                "reference_percent": 0.5
+              },
+              "grout_load_active": false
+            },
+            {
+              "axial_zone": "D",
+              "y_range_m": [
+                28,
+                35.5
+              ],
+              "role": "tapered shield front",
+              "inner_soil_A": {
+                "active": false,
+                "water_conditions": "Dry"
+              },
+              "liner_placeholder_soil_B": {
+                "active": false,
+                "water_conditions": "Dry"
+              },
+              "plate_active": true,
+              "positive_interface_active": true,
+              "surface_contraction": {
+                "active": true,
+                "distribution": "axial_increment",
+                "reference_percent": 0.5,
+                "gradient_percent_m": -0.0667,
+                "reference_point_m": [
+                  0,
+                  28,
+                  0
+                ]
+              },
+              "grout_load_active": false
+            }
+          ],
+          "active_face_pressure": {
+            "y_m": 35.5,
+            "cross_sections": [
+              "A",
+              "B"
+            ]
+          }
+        },
+        {
+          "id": "2",
+          "face_y_m": 37,
+          "new_excavation_y_m": [
+            35.5,
+            37
+          ],
+          "new_excavation_soils": {
+            "inner_soil_A": {
+              "active": false,
+              "water_conditions": "Dry"
+            },
+            "liner_placeholder_soil_B": {
+              "active": false,
+              "water_conditions": "Dry"
+            }
+          },
+          "new_shield_objects_active": [
+            "plate",
+            "positive_interface",
+            "surface_contraction"
+          ]
+        },
+        {
+          "id": "3",
+          "face_y_m": 38.5,
+          "new_excavation_rule": "Deactivate both cross-section A inner soil and B liner placeholder soil; set both to Dry."
+        },
+        {
+          "id": "4",
+          "face_y_m": 40,
+          "new_excavation_rule": "Deactivate both cross-section A inner soil and B liner placeholder soil; set both to Dry."
+        },
+        {
+          "id": "5",
+          "face_y_m": 41.5,
+          "new_excavation_rule": "Deactivate both cross-section A inner soil and B liner placeholder soil; set both to Dry."
+        }
+      ],
+      "mesh": {
+        "global": "Medium (book UI)"
+      },
+      "outputs": [
+        "final uz",
+        "horizontal section z1.95",
+        "surface settlement approximately 0.02 m (book result)"
+      ],
+      "uncertainties": [
+        "Polycurve insertion is the arc start at the crown, not the circle center; verify geometry after API conversion.",
+        "The tunnel crosses the clay/stiff-sand boundary; operate on every resulting sub-object.",
+        "Stage 1 grouting and shield zones require both inner soil A and liner placeholder soil B inactive and Dry, not inner soil alone.",
+        "Old pressure and contraction activation must be removed as faces move."
+      ]
+    },
+    {
+      "id": "16",
+      "title": "水库快速与缓慢降水",
+      "pdf_pages": [
+        332,
+        339
+      ],
+      "printed_pages": [
+        319,
+        326
+      ],
+      "reference": "embankment-tunnel-drawdown.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "domain_m": {
+          "x": [
+            -130,
+            130
+          ],
+          "y": [
+            0,
+            50
+          ],
+          "z": [
+            -30,
+            30
+          ]
+        },
+        "dam_height_m": 30,
+        "dam_base_width_m": 172.5,
+        "crest_width_m": 5,
+        "core_bottom_x_m": [
+          -10,
+          10
+        ],
+        "dam_toes_x_m": [
+          -80,
+          92.5
+        ]
+      },
+      "materials": {
+        "tables": [
+          "16-1"
+        ],
+        "table_pdf_pages": [
+          333
+        ],
+        "models": [
+          "MC Undrained B core",
+          "MC Drained fill/foundation"
+        ],
+        "unsaturated": "Hypres/Van Genuchten"
+      },
+      "groundwater": {
+        "high_reservoir_head_m": 25,
+        "low_reservoir_head_m": 5,
+        "outside_head_m": -10,
+        "water_surface_table": "16-3",
+        "time_boundary_faces_table": "16-2"
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "hydraulic_closed": [
+          "YMin",
+          "YMax",
+          "ZMin"
+        ],
+        "hydraulic_open": [
+          "XMin",
+          "XMax",
+          "ZMax"
+        ]
+      },
+      "loads": {
+        "type": "self-weight and time-varying hydraulic head"
+      },
+      "phases": [
+        {
+          "id": "High",
+          "type": "Gravity",
+          "pore_pressure": "steady groundwater flow"
+        },
+        {
+          "id": "Rapid",
+          "parent": "High",
+          "type": "Fully coupled flow-deformation",
+          "days": 5,
+          "head_change_m": -20
+        },
+        {
+          "id": "Slow",
+          "parent": "High",
+          "type": "Fully coupled flow-deformation",
+          "days": 50,
+          "head_change_m": -20
+        },
+        {
+          "id": "LowSteady",
+          "parent": "High",
+          "type": "Plastic",
+          "pore_pressure": "steady groundwater flow",
+          "disable_time_head_faces": true
+        },
+        {
+          "id": "Safety",
+          "count": 4,
+          "parents": [
+            "High",
+            "Rapid",
+            "Slow",
+            "LowSteady"
+          ],
+          "book_max_steps": [
+            30,
+            50,
+            50,
+            50
+          ]
+        }
+      ],
+      "mesh": {
+        "global": "Fine (book UI)"
+      },
+      "outputs": [
+        "Pwater section y15",
+        "crest point (-2.5,25,30)",
+        "SigmaMsf-displacement platform"
+      ],
+      "uncertainties": [
+        "Foundation OCR is not specified despite text calling it overconsolidated.",
+        "Source typo -30mm conflicts with 30m layer.",
+        "E/su gradient table omits per-metre unit.",
+        "Rapid and slow must share High parent, not inherit sequentially."
+      ]
+    },
+    {
+      "id": "17",
+      "title": "简谐振源与阻尼",
+      "pdf_pages": [
+        340,
+        346
+      ],
+      "printed_pages": [
+        327,
+        333
+      ],
+      "reference": "dynamics-installation.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "domain_m": {
+          "x": [
+            0,
+            20
+          ],
+          "y": [
+            0,
+            20
+          ],
+          "z": [
+            -10,
+            0
+          ]
+        },
+        "symmetry": "quarter",
+        "source_radius_m": 0.5,
+        "described_concrete_thickness_m": 0.2
+      },
+      "materials": {
+        "tables": [
+          "17-1",
+          "17-2"
+        ],
+        "table_pdf_pages": [
+          341,
+          342
+        ],
+        "soil_E_kPa": 50000,
+        "nu": 0.3,
+        "gamma_kN_m3": 20,
+        "K0": 0.5,
+        "Rayleigh_targets_Hz_percent": [
+          [
+            9,
+            5
+          ],
+          [
+            11,
+            5
+          ]
+        ]
+      },
+      "groundwater": {
+        "head_z_m": -10,
+        "case_statement": "groundwater effect ignored"
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "dynamic_viscous": [
+          "XMax",
+          "YMax",
+          "ZMin"
+        ],
+        "dynamic_none": [
+          "XMin",
+          "YMin",
+          "ZMax"
+        ]
+      },
+      "loads": {
+        "static_qz_kPa": -8,
+        "dynamic_base_qz_kPa": -1,
+        "multiplier_amplitude": 10,
+        "frequency_Hz": 10,
+        "phase_deg": 0
+      },
+      "phases": [
+        {
+          "id": "Initial",
+          "type": "K0"
+        },
+        {
+          "id": "Static",
+          "type": "Plastic"
+        },
+        {
+          "id": "Forced",
+          "type": "Dynamic",
+          "seconds": 0.5,
+          "static_retained": true,
+          "reset_displacement": true
+        },
+        {
+          "id": "Free",
+          "type": "Dynamic",
+          "seconds": 0.5,
+          "dynamic_load": "inactive",
+          "static_retained": true
+        }
+      ],
+      "mesh": {
+        "global": "Medium (book UI)",
+        "source_surface_refinement": 0.125
+      },
+      "outputs": [
+        "uz/vz/az-time",
+        "input history",
+        "total acceleration at t0.5",
+        "compare with/without Rayleigh"
+      ],
+      "uncertainties": [
+        "Detailed concrete foundation material/object not specified after initial description.",
+        "Geometric attenuation exists without Rayleigh damping."
+      ]
+    },
+    {
+      "id": "18",
+      "title": "建筑自由振动与地震",
+      "pdf_pages": [
+        347,
+        357
+      ],
+      "printed_pages": [
+        334,
+        344
+      ],
+      "reference": "dynamics-installation.md",
+      "evidence_status": "source-defined-but-not-confirmed",
+      "runtime_validation": "not_executed",
+      "geometry": {
+        "domain_m": {
+          "x": [
+            -80,
+            80
+          ],
+          "y": [
+            0,
+            3
+          ],
+          "z": [
+            -40,
+            15
+          ]
+        },
+        "building_width_m": 10,
+        "basement_depth_m": 2,
+        "storeys": 5,
+        "storey_height_m": 3,
+        "soil_layer_z_m": [
+          0,
+          -15,
+          -40
+        ]
+      },
+      "materials": {
+        "tables": [
+          "18-1",
+          "18-2",
+          "18-3",
+          "18-4"
+        ],
+        "table_pdf_pages": [
+          348,
+          351
+        ],
+        "models": [
+          "HSsmall Drained soils",
+          "elastic plates",
+          "elastic axial-only columns"
+        ],
+        "column_EA_kN": 2500000.0
+      },
+      "groundwater": {
+        "head_z_m": -15,
+        "case_statement": "groundwater effect ignored"
+      },
+      "boundaries": {
+        "source_detail": "Counterpart chapter/reference manual defines default deformation conditions; the case text does not enumerate every displacement component.",
+        "readback_status": "unset-or-not-read-back",
+        "rule": "Water boundaries and deformation boundaries must be recorded separately; do not fill missing components with inferred defaults.",
+        "free_dynamic_viscous": [
+          "XMin",
+          "XMax",
+          "ZMin"
+        ],
+        "free_dynamic_none": [
+          "YMin",
+          "YMax",
+          "ZMax"
+        ],
+        "earthquake_dynamic_viscous": [
+          "XMin",
+          "XMax"
+        ],
+        "earthquake_dynamic_none": [
+          "YMin",
+          "YMax",
+          "ZMin",
+          "ZMax"
+        ]
+      },
+      "loads": {
+        "static_line_load_conflict_kN_m": [
+          1,
+          10
+        ],
+        "earthquake_file": "225a.smc (not acquired here)",
+        "dynamic_input_type": "Acceleration table with drift correction",
+        "base_prescribed_ux_scale_m": 1,
+        "base_yz": "fixed"
+      },
+      "phases": [
+        {
+          "id": "Initial",
+          "type": "K0",
+          "structures": "inactive"
+        },
+        {
+          "id": "Building",
+          "type": "Plastic",
+          "action": "activate structure; excavate basement"
+        },
+        {
+          "id": "StaticLoad",
+          "parent": "Building",
+          "type": "Plastic",
+          "reset_displacement": true
+        },
+        {
+          "id": "Free",
+          "parent": "StaticLoad",
+          "type": "Dynamic",
+          "seconds": 5,
+          "remove_static_line_load": true
+        },
+        {
+          "id": "Earthquake",
+          "parent": "Building",
+          "type": "Dynamic",
+          "seconds": 20,
+          "reset_displacement": true,
+          "activate_base_dynamic_motion": true
+        }
+      ],
+      "mesh": {
+        "global": "Fine (book UI)",
+        "animation_stored_steps_example": 100
+      },
+      "outputs": [
+        "ux-time at z15/6/3/-2",
+        "free-vibration spectrum approximately 1 Hz",
+        "earthquake acceleration power spectrum"
+      ],
+      "uncertainties": [
+        "Static line load text says 1, vector says 10.",
+        "Gur table and E/G formula are not internally consistent.",
+        "Text equivalent self-weight 5 kPa differs from tabulated plate gamma*d.",
+        "Base 1m is scaling reference, not earthquake movement amplitude."
+      ]
+    }
+  ],
+  "coverage_note": "All assigned page images and text were read. Original images and complete OCR are local-only. The catalog routes to detailed tables in the three Markdown modules; it is not an executable parameter manifest."
+}

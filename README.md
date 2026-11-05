@@ -1,63 +1,55 @@
-# plaxis-automation（PLAXIS 3D 自动化建模 Claude Code Skill · 改进版）
+# PLAXIS 3D 自动化技能
 
-通过 PLAXIS 3D Remote Scripting API（`plxscripting`）自动化创建、修改、修复和验证 PLAXIS 3D 有限元模型的 Claude Code skill。
+面向 Codex 的 PLAXIS 3D 建模、计算、结果提取与问题诊断技能。通过 `plxscripting` 操作 Input / Output，结合已有实测经验和《PLAXIS 3D基础教程》的逐页知识整理。
 
-## 原作者与来源
+## 能做什么
 
-- **原作者：[Noahpeerless](https://github.com/Noahpeerless)**
-- **原仓库：<https://github.com/Noahpeerless/plaxis-automation-skill>**（MIT License）
+- 组织地层、几何、土体与结构材料、荷载、边界、地下水、界面和施工阶段。
+- 按完整脚本建模，逐项回读参数；先验证相关小模型，再展开已确认的正式工况。
+- 检查求解状态、保存步和结果对象，脚本打开 Output，提取曲线、场数据和结构内力。
+- 查阅本构模型、排水/固结/渗流、网格与数值控制、动力分析和典型工程案例。
+- 追溯书页、图表与未决问题，区分教学示例、当前版本文档和已实测行为。
 
-本仓库基于原作者 2026-10-09 的新版修改，`plaxis_toolkit.py` 与原版一致，主要改进在 `SKILL.md`。版权和功劳归原作者，修改部分由 [xyj0727](https://github.com/xyj0727) 完成。
+## 教程知识库
 
-## 相对原版的改进
+入口：[知识索引](references/book/index.md)。覆盖源文件 378 页，包括 18 章、安装附录、参考文献和末尾彩插。各主题按用途拆分，逐页记录见 [阅读账本](references/book/page-ledger.jsonl)。
 
-`SKILL.md` 分三部分：正文是原作者 2026-10-09 的新版（端到端建模与求解流程，原样保留）；附录 A 保留原作者旧版中被新版删去的实操小节（连接、路径、命令日志核验、排水对象、保存失败与 data.convd.rr1 处理等）；附录 B 是在 PLAXIS 3D 2024 实际建模中踩过的坑和解决办法，每条都写明现象（含报错原文）、原因和解决办法，并注明与新版说法不一致之处以实测为准。附录 B 涉及：
+教材以 2013 版为背景。本增补保留旧版条件、示例参数和书内矛盾；没有宣称所有案例已在当前版本重新求解。实际使用前阅读 [兼容性与勘误](references/book/compatibility-and-errata.md)，不要将教学数值当作工程默认值。
 
-- 连接与启动、保存失败、中文路径、命令历史损坏的处理
-- 几何体分解、桩体穿越多土层后的命名与材料赋值
-- 板/界面法向、对称面处理、分阶段激活
-- 网格、计算参数、Output 取点与结果提取
-- 先写脚本、再用脚本建模、建完逐项核验的流程
+## Codex 安装
 
-## 安装
+优先使用本仓库已有的 marketplace：
 
-### 方式一：plugin（推荐，可自动更新）
-
-在 Claude Code 中执行：
-
-```
-/plugin install plaxis-automation --marketplace xyj0727/plaxis-automation-skill
+```powershell
+codex plugin marketplace add xyj0727/plaxis-automation-skill --ref main
+codex plugin add plaxis-automation@plaxis-automation-skill
 ```
 
-或命令行：
+在 `~/.codex/settings.json` 中，为 `extraKnownMarketplaces.plaxis-automation-skill` 设置 `"autoUpdate": true`。安装后重启 Codex 加载。手动刷新可执行：
 
-```bash
-claude plugin marketplace add xyj0727/plaxis-automation-skill
-claude plugin install plaxis-automation@plaxis-automation-skill
+```powershell
+codex plugin marketplace upgrade plaxis-automation-skill
 ```
 
-开启自动更新：在 `~/.claude/settings.json` 的 `extraKnownMarketplaces.plaxis-automation-skill` 里加 `"autoUpdate": true`（或在 `/plugin` → Marketplaces 里打开）。
+Codex CLI 不在 PATH 时，使用本机实际安装的 `codex.exe` 完整路径。插件能力因客户端版本而异；本仓库沿用可被 Codex 识别的兼容 marketplace 格式，见 [OpenAI 插件打包说明](https://developers.openai.com/plugins/build/plugins)。
 
-### 方式二：git clone（不会自动更新，需手动 `git pull`）
+若所用客户端无法安装该插件，可使用技能安装器：
 
-```bash
-git clone https://github.com/xyj0727/plaxis-automation-skill ~/.claude/skills/plaxis-automation
+```powershell
+npx --yes skills add https://github.com/xyj0727/plaxis-automation-skill -g -a codex -y --copy
 ```
 
-### Python 依赖
+`npx` 安装不自动更新，手动执行 `npx skills update -g`。更新前先备份自己追加的经验。
 
-```bash
-uv pip install plxscripting
-# 或：pip install plxscripting
-```
+## 文件与保留方式
 
-## 文件
+|位置|用途|
+|---|---|
+|[SKILL.md](SKILL.md)|既有建模指南与实测经验；本次仅在原有内容末尾追加知识入口|
+|[references/book/index.md](references/book/index.md)|按任务和章节检索教程知识|
+|[scripts/book_lookup.py](scripts/book_lookup.py)|关键词/页码检索与逐页覆盖检查，无额外依赖|
+|[plaxis_toolkit.py](plaxis_toolkit.py)|保留的 Python 示例工具包，使用前核对当前版本及任务参数|
 
-| 文件 | 说明 |
-|------|------|
-| `SKILL.md` | Skill 定义与完整建模指南（改进版） |
-| `plaxis_toolkit.py` | 原作者的 Python 工具包 |
+运行 PLAXIS 脚本优先使用与当前安装匹配的 Python 与 `plxscripting`。系统 Python 的版本兼容性须单独验证；技能安装并不替代 PLAXIS 软件、许可证或项目参数确认。
 
-## 许可
-
-MIT License，见 [LICENSE](LICENSE)。
+本仓库提供独立整理的知识与操作指导，不分发书籍 PDF、扫描图或完整 OCR。新增内容的来源与页码可追溯。代码及既有材料的许可条款见 [LICENSE](LICENSE)。

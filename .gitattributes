@@ -1,0 +1,4 @@
+# Preserve the exact bytes of the existing skill and example toolkit.
+SKILL.md -text
+plaxis_toolkit.py -text
+LICENSE -text
